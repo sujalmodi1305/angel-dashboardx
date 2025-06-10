@@ -7,21 +7,22 @@ st.set_page_config(page_title="Client PnL Dashboard", layout="wide")
 st.title("📊 Client PnL Dashboard")
 
 EXCEL_PATH = "Angel_Dashboard.xlsx"
-SHEET_NAME = "Clients Daily PNL"  # Your tab name
+SHEET_NAME = "Clients Daily PNL"  # Change if your tab name is different
 
+# 1. Load Excel data
 try:
     df_raw = pd.read_excel(EXCEL_PATH, sheet_name=SHEET_NAME, header=None)
 except Exception as e:
     st.error(f"Could not load {EXCEL_PATH}: {e}")
     st.stop()
 
-# Detect clients from row 0 (column headers)
+# 2. Detect clients from first row
 client_row = df_raw.iloc[0]
 clients = sorted(set(x for x in client_row if isinstance(x, str) and x not in ['Date', 'Day', 'Month']))
 
 selected_client = st.selectbox("Select Client", clients)
 
-# Identify the column index for this client's Daily PNL
+# 3. Identify this client's Daily PNL column
 client_col_index = None
 for i, val in enumerate(client_row):
     if val == selected_client and df_raw.iloc[1, i] == "Daily PNL":
@@ -29,18 +30,19 @@ for i, val in enumerate(client_row):
         break
 
 if client_col_index is None:
-    st.warning("Client's Daily PnL column not found.")
+    st.warning("Client's Daily PNL column not found.")
+    st.stop()
 else:
-    # Extract Date + Daily PNL
+    # 4. Extract Date and Daily PNL for this client
     data = df_raw[[0, client_col_index]].copy()
     data.columns = ['Date', 'Daily PNL']
-    data = data[2:]  # skip headers
+    data = data[2:]  # skip header rows
     data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
     data['Daily PNL'] = pd.to_numeric(data['Daily PNL'], errors='coerce')
     data = data.dropna()
     data = data.sort_values('Date').reset_index(drop=True)
 
-    # Compute metrics
+    # 5. Metrics calculations
     pnl = data['Daily PNL']
     cum_pnl = pnl.cumsum()
     high_water_mark = cum_pnl.cummax()
@@ -66,7 +68,7 @@ else:
         "Current Drawdown": drawdown.iloc[-1] if not drawdown.empty else 0,
     }
 
-    # Streaks
+    # Streak calculations
     streaks = np.sign(pnl)
     win_streak = loss_streak = max_win_streak = max_loss_streak = 0
     for val in streaks:
@@ -89,9 +91,11 @@ else:
         + (metrics["Loss Ratio (%)"] / 100) * metrics["Avg Loss on Loss Days"]
     )
 
+    # 6. Show summary metrics
     st.subheader("📋 Summary Metrics")
     st.dataframe(pd.DataFrame(metrics.items(), columns=["Metric", "Value"]))
 
+    # 7. Cumulative PNL chart
     st.subheader("📈 Cumulative PNL Chart")
     fig1, ax1 = plt.subplots()
     ax1.plot(data['Date'], cum_pnl, label="Cumulative PNL")
@@ -100,6 +104,7 @@ else:
     ax1.grid(True)
     st.pyplot(fig1)
 
+    # 8. Drawdown chart
     st.subheader("📉 Drawdown Chart")
     fig2, ax2 = plt.subplots()
     ax2.plot(data['Date'], drawdown, label="Drawdown", color='red')
@@ -108,6 +113,7 @@ else:
     ax2.grid(True)
     st.pyplot(fig2)
 
+    # 9. Month-wise PNL
     st.subheader("📆 Month-wise PNL")
     data['Month'] = data['Date'].dt.to_period('M')
     monthwise = data.groupby('Month')['Daily PNL'].sum().reset_index()
