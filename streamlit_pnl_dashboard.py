@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Client PnL Dashboard", layout="wide")
 st.title("📊 Client PnL Dashboard")
 
-EXCEL_PATH = "Angel_Dashboard.xlsx"
+EXCEL_PATH = "main/Angel_Dashboard.xlsx"
 SHEET_NAME = "Clients Daily PNL"  # Change if your tab name is different
 
 # 1. Load Excel data
